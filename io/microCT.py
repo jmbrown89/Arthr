@@ -39,8 +39,14 @@ class Stack:
         self.stack = np.ndarray(shape=tuple(self.slice_dims), dtype=np.uint16)
         for index, file_ in enumerate(self.slice_files):
 
-            im = sitk.GetArrayFromImage(sitk.ReadImage(file_))
-            self.stack[:, :, index] = im
+            try:
+                im = sitk.GetArrayFromImage(sitk.ReadImage(file_))
+                self.stack[:, :, index] = im
+            except IOError as err:
+                print "Error loading slice data: {}".format(err)
+                return None
+
+        return self.stack
 
     def write_stack_as_NRRD(self, output_dir):
 
@@ -51,3 +57,7 @@ class Stack:
 
         no_blocks = 20
         block_size = self.no_slices / no_blocks
+        return NotImplemented
+
+    def compute_isosurface(self):
+        return NotImplemented

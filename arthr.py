@@ -4,7 +4,7 @@ import sys
 from PyQt4 import QtGui, QtCore
 
 
-class Arthr(QtGui.QMainWindoew):
+class Arthr(QtGui.QMainWindow):
 
     def __init__(self):
         super(Arthr, self).__init__()
