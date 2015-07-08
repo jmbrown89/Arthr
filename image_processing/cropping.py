@@ -1,44 +1,90 @@
 __author__ = 'james'
 
+import matplotlib.pyplot as plt
 import SimpleITK as sitk
 import numpy as np
+from tempfile import TemporaryFile
+import nrrd
+import os
+import sys
 
-class Cropper:
+windows = sys.platform == "win32" or sys.platform == "win64"
 
-    def __init__(self, file_list, slice_dims):
+def autocrop(stack):
 
-        self.file_list = file_list
-        self.slice_dims = slice_dims
-        self.auto_crop()
+    # Compute MIP
+    mip = maximum_intensity_projection(stack)
 
-    def auto_crop(self):
+    # Get bounding box
+    bbox, cropped_dims = get_cropbox(mip)
 
-        print "Doing automatic crop"
+    # Add third dimension
+    cropped_dims = list(cropped_dims)
+    cropped_dims.append(stack.dims[2])
 
-        for file_ in self.file_list:
-            im = sitk.GetArrayFromImage(sitk.ReadImage(file_))
-            cb = self.get_cropbox()
-            im = im[cb[0], cb[1]]
+    tmp_file = TemporaryFile(mode='w+b')
+    for i, im in enumerate(stack):
+        print i
+        cropped = im[bbox[2]:bbox[3], bbox[0]:bbox[1]]
+        cropped.tofile(tmp_file)
 
-        return None
+    nrrd_out = os.path.join(os.path.dirname(stack.recon_dir), 'stack.nrrd')
+    mmap = np.memmap(tmp_file, dtype=stack.dtype, shape=tuple(cropped_dims))
+    nrrd.write(nrrd_out, np.swapaxes(mmap, 1, 2))
 
-    def get_cropbox(self):
+    return nrrd_out
 
-        max_p = self.maximum_intensity_projection()
-        binary_im = sitk.OtsuThreshold(max_p)
+def get_cropbox(max_im):
 
-        return None
+    max_im = sitk.GetImageFromArray(max_im)
+    seg = sitk.OtsuThreshold(max_im, 0, 255, 128)
+    seg = sitk.ConnectedComponent(seg)
+    seg = sitk.RelabelComponent(seg)  # relabel components in order of ascending size
+    seg = seg == 1  # discard all but largest component
 
-    def maximum_intensity_projection(self):
+    # Get bounding box
+    label_stats = sitk.LabelStatisticsImageFilter()
+    label_stats.Execute(max_im, seg)
+    bbox = list(label_stats.GetBoundingBox(1))
 
-        step_size = 10
-        sparse_list = self.file_list[::step_size]
-        max_im = np.zeros(shape=tuple(self.slice_dims))
+    # Pad bounding box and crop
+    max_im = sitk.GetArrayFromImage(max_im)
+    bbox = pad_bounding_box(bbox, max_im.shape)
+    cropped = max_im[bbox[2]:bbox[3], bbox[0]:bbox[1]]
 
-        for slice_ in sparse_list:
+    return bbox, cropped.shape
 
-            im = sitk.GetArrayFromImage(sitk.ReadImage(slice_))
-            idx = im > max_im
-            max_im[idx] = im[idx]
+def pad_bounding_box(bbox, dims):
 
-        return max_im
+    padding = np.mean(dims) * 0.025
+
+    bbox[0] -= padding  # xmin
+    if bbox[0] < 0:
+        bbox[0] = 0
+
+    bbox[1] += padding  # xmax
+    if bbox[1] > dims[0] - 1:
+        bbox[1] = dims[0] - 1
+
+    bbox[2] -= padding  # ymin
+    if bbox[2] < 0:
+        bbox[2] = 0
+
+    bbox[3] += padding  # ymax
+    if bbox[3] > dims[1] - 1:
+        bbox[3] = dims[1]
+
+    return bbox
+
+def maximum_intensity_projection(stack):
+
+    step_size = 10
+    sparse_list = np.arange(0, stack.dims[2], step_size)
+    max_im = np.zeros(shape=stack.dims[:2], dtype=stack.dtype)
+
+    for i in sparse_list:
+        im = stack[i]
+        idx = im > max_im
+        max_im[idx] = im[idx]
+
+    return max_im
