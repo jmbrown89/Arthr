@@ -19,19 +19,19 @@ def autocrop(stack):
     bbox, cropped_dims = get_cropbox(mip)
 
     # Add third dimension
-    cropped_dims = list(cropped_dims)
+    cropped_dims = list(cropped_dims[::-1])
     cropped_dims.append(stack.dims[2])
 
+    print "Writing temporary raw file"
     tmp_file = TemporaryFile(mode='w+b')
     for i, im in enumerate(stack):
-        print i
         cropped = im[bbox[2]:bbox[3], bbox[0]:bbox[1]]
         cropped.tofile(tmp_file)
 
+    print "Writing NRRD file"
     nrrd_out = os.path.join(os.path.dirname(stack.recon_dir), 'stack.nrrd')
-    mmap = np.memmap(tmp_file, dtype=stack.dtype, shape=tuple(cropped_dims))
-    nrrd.write(nrrd_out, np.swapaxes(mmap, 1, 2))
-
+    mmap = np.memmap(tmp_file, dtype=stack.dtype, shape=tuple(cropped_dims), order='F')
+    nrrd.write(nrrd_out, mmap, options={'encoding': 'gzip'})
     return nrrd_out
 
 def get_cropbox(max_im):
