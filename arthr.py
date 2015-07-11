@@ -14,7 +14,6 @@ class Arthr(QtGui.QMainWindow):
         self.setWindowTitle('Arthr v2.0')
         self.show()
 
-
 if __name__ == '__main__':
     app = QtGui.QApplication(sys.argv)
     ex = Arthr()

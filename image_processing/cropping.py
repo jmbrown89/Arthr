@@ -10,7 +10,7 @@ import sys
 
 windows = sys.platform == "win32" or sys.platform == "win64"
 
-def autocrop(stack):
+def autocrop(stack, output_dir):
 
     # Compute MIP
     mip = maximum_intensity_projection(stack)
@@ -29,7 +29,7 @@ def autocrop(stack):
         cropped.tofile(tmp_file)
 
     print "Writing NRRD file"
-    nrrd_out = os.path.join(os.path.dirname(stack.recon_dir), 'stack.nrrd')
+    nrrd_out = os.path.join(output_dir, 'stack.nrrd')
     mmap = np.memmap(tmp_file, dtype=stack.dtype, shape=tuple(cropped_dims), order='F')
     nrrd.write(nrrd_out, mmap, options={'encoding': 'gzip'})
     return nrrd_out
