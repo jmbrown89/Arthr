@@ -2,52 +2,93 @@ __author__ = 'james'
 
 from argparse import ArgumentParser
 import yaml
+from data_structures import io
 from data_structures.stack import Stack, Mesh
 from image_processing import cropping, segment, processing
+from registration.register import register
+import numpy as np
 import os
 
-def build_model(model_dict, model_path):
+def build_model(model_dict, output_dir):
 
     # Create directory for processed recons and process
-    try:
-        processed_dir = os.path.mkdir(model_path, 'processed')
-    except OSError:
-        print 'Processed directory already exists!'
-        return
+    processed_dir = os.path.join(output_dir, 'processed')
+    mkdir_force(processed_dir)
 
-    process_inputs(model_dict['input_recons'], processed_dir)
+    # Process input data
+    model_path = model_dict['model_path']
+    sample_dict = process_inputs(model_dict['input_recons'], processed_dir)
+
+    # Register inputs
+    reg_dir = os.path.join(output_dir, 'registration')
+    mkdir_force(reg_dir)
+    register_inputs(model_path, sample_dict, reg_dir)
+
+    # TODO Label registered samples
+
+    # TODO Invert registrations
+
+    # TODO Compute statistical shape models
+
+
+def register_inputs(model_path, sample_dict, reg_dir):
+
+    # Register model to input samples
+    for sample in sample_dict.values():
+
+        # Load model
+        model = io.load_model(model_path)
+
+        # Create registration directory
+        reg_dir = os.path.join(os.path.dirname(sample), 'reg')
+
+        # Register model with sample
+        registered_model = register(model, sample)
+
+        # Save registered model
+        io.save_model(registered_model, reg_dir)
+
+def label_inputs():
+    pass
 
 def process_inputs(input_recons, processed_dir, force=True):
 
-    # For each recon in the list
+    sample_dict = {}
     for recon_name, recon_dir in input_recons.items():
 
         # Create directory within processed directory
         out_dir = os.path.join(processed_dir, recon_name)
 
+        # If the directory does not exist, or force is True
         if not os.path.isdir(out_dir) or force:
             mkdir_force(out_dir)
 
-        # Create stack
-        s = Stack(recon_dir, name=recon_name)
+        # Create stack and compute curvature
+        stack = Stack(recon_dir, name=recon_name)
+        curve = processing.compute_curvature(stack)
+        np.save(os.path.join(out_dir, 'curve.npy'), curve)
 
         # Crop volume
-        cropped_path = cropping.autocrop(s, out_dir)
+        cropped_path = cropping.autocrop(stack, out_dir)
 
         # Segment and generate mesh
         seg = segment.otsu_threshold(cropped_path)
-        vertices, faces = segment.create_mesh(seg)
-        m = Mesh(vertices, faces, s.compute_curvature())
-        m.write_ply()
+        vertices, faces = processing.create_mesh(seg)
+        m = Mesh(vertices, faces)
+        ply_path = m.write_ply(out_dir)
 
+        # Append to dict
+        sample_dict[recon_name] = ply_path
+
+    return sample_dict
 
 def mkdir_force(dir):
 
     try:
-        os.path.mkdir(dir)
+        os.mkdir(dir)
     except OSError:
         os.rmdir(dir)
-        os.path.mkdir(dir)
+        os.mkdir(dir)
 
 if __name__ == "__init__":
 
