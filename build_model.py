@@ -11,7 +11,7 @@ import os
 
 def build_model(model_dict, output_dir):
 
-    # Create directory for processed recons and process
+    # Create directory for processed recons
     processed_dir = os.path.join(output_dir, 'processed')
     mkdir_force(processed_dir)
 
@@ -19,9 +19,11 @@ def build_model(model_dict, output_dir):
     model_path = model_dict['model_path']
     sample_dict = process_inputs(model_dict['input_recons'], processed_dir)
 
-    # Register inputs
+    # Create directory for registration results
     reg_dir = os.path.join(output_dir, 'registration')
     mkdir_force(reg_dir)
+
+    # Register inputs
     register_inputs(model_path, sample_dict, reg_dir)
 
     # TODO Label registered samples
@@ -34,13 +36,13 @@ def build_model(model_dict, output_dir):
 def register_inputs(model_path, sample_dict, reg_dir):
 
     # Register model to input samples
-    for sample in sample_dict.values():
+    for sample_name, sample in sample_dict.values():
 
         # Load model
         model = io.load_model(model_path)
 
         # Create registration directory
-        reg_dir = os.path.join(os.path.dirname(sample), 'reg')
+        reg_dir = os.path.join(reg_dir, sample_name)
 
         # Register model with sample
         registered_model = register(model, sample)
@@ -82,23 +84,23 @@ def process_inputs(input_recons, processed_dir, force=True):
 
     return sample_dict
 
-def mkdir_force(dir):
+def mkdir_force(dir_name):
 
     try:
-        os.mkdir(dir)
+        os.mkdir(dir_name)
     except OSError:
-        os.rmdir(dir)
-        os.mkdir(dir)
+        os.rmdir(dir_name)
+        os.mkdir(dir_name)
 
-if __name__ == "__init__":
+if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument('--inputs', '-i', dest='config', help='.yaml file with list of input recons')
+    parser.add_argument('--inputs', '-i', dest='config', help='.yaml file with list of input recons', required=True)
     args = parser.parse_args()
 
     # Load from yaml file
     with open(args.config) as conf:
-        model_dict = yaml.load(conf)
+        yaml_dict = yaml.load(conf)
 
     # Process recons
-    build_model(model_dict, os.path.dirname(args.config))
+    build_model(yaml_dict, os.path.dirname(os.path.abspath(args.config)))
