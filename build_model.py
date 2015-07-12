@@ -2,7 +2,7 @@ __author__ = 'james'
 
 from argparse import ArgumentParser
 import yaml
-from data_structures import io
+from data_structures import data_io
 from data_structures.stack import Stack, Mesh
 from image_processing import cropping, segment, processing
 from registration.register import register
@@ -27,9 +27,7 @@ def build_model(model_dict, output_dir):
     register_inputs(model_path, sample_dict, reg_dir)
 
     # TODO Label registered samples
-
     # TODO Invert registrations
-
     # TODO Compute statistical shape models
 
 
@@ -39,7 +37,7 @@ def register_inputs(model_path, sample_dict, reg_dir):
     for sample_name, sample in sample_dict.values():
 
         # Load model
-        model = io.load_model(model_path)
+        model = data_io.load_model(model_path)
 
         # Create registration directory
         reg_dir = os.path.join(reg_dir, sample_name)
@@ -48,7 +46,7 @@ def register_inputs(model_path, sample_dict, reg_dir):
         registered_model = register(model, sample)
 
         # Save registered model
-        io.save_model(registered_model, reg_dir)
+        data_io.save_model(registered_model, reg_dir)
 
 def label_inputs():
     pass

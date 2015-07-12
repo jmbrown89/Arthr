@@ -28,7 +28,7 @@ class Model(Mesh):
     def __init__(self, vertices, faces, labels, joints, name='Untitled model'):
 
         # Call super constructor
-        super(Model).__init__(self, vertices, faces, name)
+        super(Model).__init__(self, vertices, faces, name=name)
 
         # Store labels
         self.labels = labels
@@ -45,3 +45,4 @@ class Model(Mesh):
 
 def load_model(model_dir):
     return None
+
