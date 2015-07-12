@@ -36,9 +36,6 @@ class Model(Mesh):
         # Store joints
         self.joints = joints
 
-    def transform(self, T, bone=None):
-        raise NotImplementedError
-
     def write_ply(self, out_dir):
         ply_out = os.path.join(out_dir, self.name + '.ply')
         return ply_out
