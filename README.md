@@ -1,2 +1,2 @@
 # Arthr
-Articulated statistical shape models for analysis of bone destruction in the mouse hind paw
+A registration tool for analysing bone destruction in the mouse hind paw.
